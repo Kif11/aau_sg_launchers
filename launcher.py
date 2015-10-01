@@ -6,15 +6,36 @@ from aau.shotgun import sg
 
 platform_name = {'linux2': 'linux', 'darwin': 'mac', 'win32': 'windows'}[sys.platform]
 
-toolkit_skripts_path = '//180net1/mnt$/software/shotgun/sX_JRG'
-project_path = '//180net1/Collab/sX_JRG'
 
 def is_user(name):
 
 	return sg.find_one('HumanUser', [['login','is', name]], ['login'])
 
-# Grab user name from system environment
-system_user = os.environ['USERNAME'].lower()
+
+def mount_drive(user_name, password, remote_path, local_path):
+	if not os.path.exists(local_path): 
+		os.makedirs(local_path)
+
+	os.system('mount -t smbfs //%s:%s@%s %s' % (user_name, 
+												password, 
+												remote_path, 
+												local_path))
+
+def shotgun_cmd(tank_path, cmd):
+	os.system('%s %s' % (tank_path, cmd))
+
+
+if platform_name == 'windows':
+	toolkit_scripts_path = '//180net1/mnt$/software/shotgun/sX_Goldenman'
+	project_path = '//180net1/Collab/sX_Goldenman'
+	# Grab user name from system environment
+	system_user = os.environ['USERNAME'].lower()
+elif platform_name == 'mac':
+	toolkit_scripts_path = '/Volumes/mnt$/software/shotgun/sX_Goldenman'
+	project_path = '/Volumes/Collab/sX_Goldenman'
+	system_user = os.environ['USER'].lower()
+
+
 
 # Try to find user with a given login on shotgun
 # sg_user = is_user(system_user)
@@ -37,7 +58,12 @@ while not login_success:
 	if sg_user != None:
 		# Set user name environmental variable to his login that Shotgun
 		# hook can corectly resolve it
-		os.environ['USERNAME'] = user_login
+		
+		if platform_name == 'windows':
+			os.environ['USERNAME'] = user_login
+		elif platform_name == 'mac':
+			os.environ['USER'] = user_login
+
 		login_success = True
 
 	else:
@@ -49,24 +75,25 @@ if login_success:
 
 # Determine the tank path for the current platforme
 if platform_name == 'windows':
-	TANK = toolkit_skripts_path + '/tank.bat'
+	TANK = toolkit_scripts_path + '/tank.bat'
 elif platform_name == 'mac':
-	TANK = toolkit_skripts_path + '/tank'
+	TANK = toolkit_scripts_path + '/tank'
 
+print "TANK_PATH", TANK
 
-# Use first command line argument to determin next action
+# Use fcrst command line argument to determin next action
 if sys.argv[1] == 'maya':
 
 	# Configure maya environment
-	os.environ['MAYA_SCRIPT_PATH'] = os.path.join(project_path, 'script')
-	os.environ['PYTHONPATH'] = os.path.join(project_path, 'script')
+	os.environ['MAYA_SCRIPT_PATH'] = os.path.join(toolkit_scripts_path, 'scripts')
+	os.environ['PYTHONPATH'] = os.path.join(toolkit_scripts_path, 'scripts')
 	os.environ['PROJECT'] = project_path
 
 	# Launch maya trough SG Toolkit
-	subprocess.call(TANK + ' launch_maya')
+	subprocess.call([TANK, 'launch_maya'])
 	
 elif sys.argv[1] == 'nuke':
-	subprocess.call(TANK + ' launch_nuke')
+	subprocess.call([TANK, 'launch_nuke'])
 
 elif sys.argv[1] == 'console':
 
